@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PlayHologramFiles": {
+      "commandName": "Project",
+      "commandLineArgs": "-machinename GhoulishGirlScare -manufacturer williams -default a -loop -testnetwork"
+    }
+  }
+}

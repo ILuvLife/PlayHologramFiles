@@ -1,0 +1,29 @@
+﻿
+if (arg == "-loop" || arg == "/loop")
+{
+    setToLoop = true;
+}
+if (arg == "-playall" || arg == "/playall")
+{
+    setToPlayAll = true;
+}
+if (arg == "-testnetwork" || arg == "/testnetwork")
+{
+    testNetwork = true;
+}
+if (arg == "-machinename" || arg == "/machinename")
+{
+    i++;
+    machineName = args[i];
+}
+if (arg == "-manufacturer" || arg == "/manufacturer")
+{
+    i++;
+    manufacturer = args[i];
+}
+if (arg == "-default" || arg == "/default")
+{
+    i++;
+    defaultFile = args[i];
+}
+
