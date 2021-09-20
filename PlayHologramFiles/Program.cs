@@ -16,6 +16,8 @@ namespace PlayHologramFiles
         {
             string machineName = "";
             string manufacturer = "";
+            string emulator = "";
+            string custom2 = "";
             string defaultFile = "";
             bool setToLoop = false;
             bool setToPlayAll = false;
@@ -46,6 +48,16 @@ namespace PlayHologramFiles
                     i++;
                     manufacturer = args[i];
                 }
+                if (arg == "-emulator" || arg == "/emulator")
+                {
+                    i++;
+                    emulator = args[i];
+                }
+                if (arg == "-custom2" || arg == "/custom2")
+                {
+                    i++;
+                    custom2 = args[i];
+                }
                 if (arg == "-default" || arg == "/default")
                 {
                     i++;
@@ -66,17 +78,19 @@ namespace PlayHologramFiles
                 Console.SetError(streamwriter);
             }
 
-            Console.WriteLine(DateTime.Now + " " + "Called with parameters set to: machineName: " + machineName + " manufacturer: " + manufacturer + " defaultFile: " + defaultFile + " setToLoop: " + setToLoop + " setToPlayAll: " + setToPlayAll + " testNetwork: " + testNetwork);
+            Console.WriteLine(DateTime.Now + " " + "Called with parameters set to: machineName: " + machineName + " manufacturer: " + manufacturer + " emulator: " + emulator + " custom2: " + custom2 + " defaultFile: " + defaultFile + " setToLoop: " + setToLoop + " setToPlayAll: " + setToPlayAll + " testNetwork: " + testNetwork);
 
             try
             {
-                RunCommands(machineName, manufacturer, defaultFile, setToLoop, setToPlayAll, testNetwork);
+                RunCommands(machineName, manufacturer, emulator, custom2, defaultFile, setToLoop, setToPlayAll, testNetwork);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(DateTime.Now + " " + "Error occurred in Main calling RunCommands: " 
                     + " machineName: " + machineName 
-                    + " manufacturer: " + manufacturer 
+                    + " manufacturer: " + manufacturer
+                    + " emulator: " + emulator
+                    + " custom2: " + custom2
                     + " defaultFile: " + defaultFile 
                     + " setToLoop: " + setToLoop 
                     + " setToPlayAll: " + setToPlayAll 
@@ -86,7 +100,7 @@ namespace PlayHologramFiles
 
         }
 
-        private static void RunCommands(string machineName, string manufacturer, string defaultFile, bool setToLoop, bool setToPlayAll, bool testNetwork)
+        private static void RunCommands(string machineName, string manufacturer, string emulator, string custom2, string defaultFile, bool setToLoop, bool setToPlayAll, bool testNetwork)
         {
             //Connect to device
             ConnectionHandler connectionHandler = new ConnectionHandler();
@@ -122,9 +136,33 @@ namespace PlayHologramFiles
             }
             if (!found)
             {
+                if (!string.IsNullOrEmpty(custom2))
+                {
+                    HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, custom2 + ".bin", StringComparison.OrdinalIgnoreCase));
+                    if (item != null)
+                    {
+                        found = true;
+                        connectionHandler.PlayFile(item.id);
+                    }
+                }
+            }
+            if (!found)
+            {
                 if (!string.IsNullOrEmpty(manufacturer))
                 {
                     HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, manufacturer + ".bin", StringComparison.OrdinalIgnoreCase));
+                    if (item != null)
+                    {
+                        found = true;
+                        connectionHandler.PlayFile(item.id);
+                    }
+                }
+            }
+            if (!found)
+            {
+                if (!string.IsNullOrEmpty(emulator))
+                {
+                    HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, emulator + ".bin", StringComparison.OrdinalIgnoreCase));
                     if (item != null)
                     {
                         found = true;
@@ -163,28 +201,46 @@ namespace PlayHologramFiles
         {
             List<HologramListItem> rtnVal = new List<HologramListItem>();
 
-            string beginningChars = "c30c38";
-            string endingChars = "a4a8c2e3";
-            int idx = lastResponse.IndexOf(beginningChars);
-            if (idx < 0)
-                return rtnVal;
-            int endLength = lastResponse.IndexOf(endingChars) - 4;  //Remove the HE10 or HE11 that says if the list is looping or not
-            if (endLength <= 0)
-                return rtnVal;
-
-            idx += beginningChars.Length + 3; //There are 3 more chars after that I don't know what they represent
-            while (idx < (endLength - 2))
+            int idx = 0;
+            int fileNameLength = 0;
+            string nextExecutingStatement = "";
+            try
             {
-                int fileNameLength = GetNumberFromString(lastResponse.Substring(idx, 2));   //Two digit file number implies a limit of 99 files are allowed on the device.
-                idx = idx + 2;
-                string item = lastResponse.Substring(idx, fileNameLength);
-                HologramListItem listItem = new HologramListItem()
+                string beginningChars = "c30c38";
+                string endingChars = "a4a8c2e3";
+                idx = lastResponse.IndexOf(beginningChars);
+                if (idx < 0)
+                    return rtnVal;
+                int endLength = lastResponse.IndexOf(endingChars) - 4;  //Remove the HE10 or HE11 that says if the list is looping or not
+                if (endLength <= 0)
+                    return rtnVal;
+
+                idx += beginningChars.Length + 3; //There are 3 more chars after that I don't know what they represent
+                while (idx < (endLength - 2))
                 {
-                    id = item.Substring(0, 2),
-                    name = item.Substring(2)
-                };
-                rtnVal.Add(listItem);
-                idx += fileNameLength;
+                    nextExecutingStatement = "GetNumberFromString";
+                    fileNameLength = GetNumberFromString(lastResponse.Substring(idx, 2));   //Two digit file number implies a limit of 99 files are allowed on the device.
+                    idx = idx + 2;
+                    nextExecutingStatement = "lastResponse.Substring(idx, fileNameLength)";
+                    string item = lastResponse.Substring(idx, fileNameLength);
+                    HologramListItem listItem = new HologramListItem()
+                    {
+                        id = item.Substring(0, 2),
+                        name = item.Substring(2)
+                    };
+                    rtnVal.Add(listItem);
+                    idx += fileNameLength;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(DateTime.Now + " " + "Error occurred in Main calling ParseList: "
+                    + " idx: " + idx
+                    + " lastResponse:" + lastResponse
+                    + " fileNameLength: " + fileNameLength
+                    + " nextExecutingStatement: " + nextExecutingStatement
+                    + " " + ex.Message + ex.StackTrace); ;
+                throw;
             }
 
             return rtnVal;
