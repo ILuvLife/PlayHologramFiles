@@ -24,11 +24,13 @@ namespace PlayHologramFiles
 
         public bool GetList()
         {
+            //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.GetList()");
             bool rtnVal = false;
 
             try
             {
                 IPEndPoint localEndPoint = CreateLocalEndPoint();
+                //Console.WriteLine(DateTime.Now + " " + "ConnectionHandler.GetList() - about to using localEndPoint");
                 using (TcpClient client = new TcpClient(localEndPoint))
                 {
                     client.Connect(hologramIpAddress, hologramPort);
@@ -65,19 +67,64 @@ namespace PlayHologramFiles
             catch (Exception ex)
             {
                 Console.WriteLine(DateTime.Now + " " + "Error in ConnectionHandler.GetList(). The error message is: " + ex.Message);
-                throw;
+                rtnVal = false;
+                //throw;
             }
 
+            //Console.WriteLine(DateTime.Now + " " + "Exit ConnectionHandler.GetList()");
             return rtnVal;
         }
 
+        //public bool PlayFile(HologramListItem hologramItem)
+        //{
+        //    bool rtnVal = false;
+        //    int retry = 0;
+
+        //    try
+        //    {
+        //        while (!rtnVal && retry < 3)
+        //        {
+        //            rtnVal = PlayFile(hologramItem.id);
+        //            if(rtnVal)
+        //            {
+        //                //Check to see if it is the playing Item by checking what it tells us in the last chars of GetList response.
+        //                LastResponse = string.Empty;
+        //                GetList();
+
+        //                int endLength = LastResponse.IndexOf(commandEndingCharacters) - 6;  //Remove the HE10 or HE11 that says if the list is looping or not, and then our magic 2 digit number for going back 6 in total.
+        //                if (endLength > 0)
+        //                {
+        //                    string playingId = LastResponse.Substring(endLength, 2);
+        //                    if (playingId != hologramItem.id)
+        //                    {
+        //                        rtnVal = false; //Try again.
+        //                        Console.WriteLine(DateTime.Now + " " + "Retry ConnectionHandler.PlayFile(HologramListItem). The file id's are: " + hologramItem.id + ", " + playingId + "  Last 20 chars from GetList.LastResponse are: " + LastResponse.Substring(LastResponse.Length - 20));
+        //                    }
+        //                }
+        //            }
+
+        //            retry++;
+        //        }
+        //        rtnVal = true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine(DateTime.Now + " " + "Error in ConnectionHandler.PlayFile(HologramListItem). The error message is: " + ex.Message);
+        //        throw;
+        //    }
+
+        //    return rtnVal;
+        //}
+
         public bool PlayFile(string id)
         {
+            //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.PlayFile()");
             bool rtnVal = false;
 
             try
             {
                 IPEndPoint localEndPoint = CreateLocalEndPoint();
+                //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.PlayFile() - about to using localEndPoint");
                 using (TcpClient client = new TcpClient(localEndPoint))
                 {
                     client.Connect(hologramIpAddress, hologramPort);
@@ -116,20 +163,24 @@ namespace PlayHologramFiles
             catch (Exception ex)
             {
                 Console.WriteLine(DateTime.Now + " " + "Error in ConnectionHandler.PlayFile(). The error message is: " + ex.Message);
-                throw;
+                rtnVal = false;
+                //throw;
             }
 
+            //Console.WriteLine(DateTime.Now + " " + "Exit ConnectionHandler.PlayFile()");
             return rtnVal;
         }
 
 
         public bool LoopFile()
         {
+            //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.LoopFile()");
             bool rtnVal = false;
 
             try
             {
                 IPEndPoint localEndPoint = CreateLocalEndPoint();
+                //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.LoopFile() - about to using localEndPoint");
                 using (TcpClient client = new TcpClient(localEndPoint))
                 {
                     client.Connect(hologramIpAddress, hologramPort);
@@ -168,19 +219,23 @@ namespace PlayHologramFiles
             catch (Exception ex)
             {
                 Console.WriteLine(DateTime.Now + " " + "Error in ConnectionHandler.LoopFile(). The error message is: " + ex.Message);
-                throw;
+                rtnVal = false;
+                //throw;
             }
 
+            //Console.WriteLine(DateTime.Now + " " + "Exit ConnectionHandler.LoopFile()");
             return rtnVal;
         }
 
         public bool PlayAll()
         {
+            //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.PlayAll()");
             bool rtnVal = false;
 
             try
             {
                 IPEndPoint localEndPoint = CreateLocalEndPoint();
+                //Console.WriteLine(DateTime.Now + " " + "In ConnectionHandler.PlayAll() - about to using localEndPoint");
                 using (TcpClient client = new TcpClient(localEndPoint))
                 {
                     client.Connect(hologramIpAddress, hologramPort);
@@ -219,9 +274,11 @@ namespace PlayHologramFiles
             catch (Exception ex)
             {
                 Console.WriteLine(DateTime.Now + " " + "Error in ConnectionHandler.PlayAll(). The error message is: " + ex.Message);
-                throw;
+                rtnVal = false;
+                //throw;
             }
 
+            //Console.WriteLine(DateTime.Now + " " + "Exit ConnectionHandler.PlayAll()");
             return rtnVal;
         }
 
@@ -233,7 +290,7 @@ namespace PlayHologramFiles
             if(string.IsNullOrEmpty(wanAdapter))
             {
                 wanAdapter = Program.configSettings.WifiName;
-                Console.WriteLine(DateTime.Now + " " + "Used config for wifi name");
+                Console.WriteLine(DateTime.Now + " " + "Used config for wifi name. Name is|" + wanAdapter + "|");
             }
             string wanIpAddress = "";   // "192.168.4.2";   //Need to set this??? - not really
 
@@ -256,6 +313,7 @@ namespace PlayHologramFiles
                 Console.WriteLine(DateTime.Now + " " + "Error in ConnectionHandler.CreateLocalEndPoint(). The error message is: " + ex.Message);
                 throw;
             }
+            //Console.WriteLine(DateTime.Now + " " + "About to exit CreateLocalEndPoint()");
             return null;
         }
 

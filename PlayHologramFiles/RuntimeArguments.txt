@@ -27,3 +27,4 @@ if (arg == "-default" || arg == "/default")
     defaultFile = args[i];
 }
 
+PlayHologramFiles -machinename GhoulishGirlScare -manufacturer williams -emulator "Pinball FX3" -custom2 "cust2" -default a -loop -testnetwork

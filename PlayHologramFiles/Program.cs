@@ -5,15 +5,27 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace PlayHologramFiles
 {
     class Program
     {
+        static Mutex mutex = new Mutex(true, "{97D4D7C6-047D-4D0E-86C0-066B2D475DDA}");
+
         public static ConfigSettings configSettings;
 
         static void Main(string[] args)
         {
+
+            if (!mutex.WaitOne(TimeSpan.Zero, true))
+            {
+                //Already running, just gtfo
+                Console.WriteLine(DateTime.Now + " Already running. Exit");
+                Environment.Exit(0);
+            }
+
+
             string machineName = "";
             string manufacturer = "";
             string emulator = "";
@@ -97,7 +109,8 @@ namespace PlayHologramFiles
                     + " testNetwork: " + testNetwork 
                     + " " + ex.Message);
             }
-
+            //Console.WriteLine(DateTime.Now + " About to exit");
+            Environment.Exit(0);
         }
 
         private static void RunCommands(string machineName, string manufacturer, string emulator, string custom2, string defaultFile, bool setToLoop, bool setToPlayAll, bool testNetwork)
@@ -109,7 +122,11 @@ namespace PlayHologramFiles
                 connectionHandler.TestNetwork();
             }
 
-            connectionHandler.GetList();
+            if(!connectionHandler.GetList())
+            {
+                //If we can't get the list, we are done so just exit.
+                return;
+            }
 
             List<HologramListItem> hologramFileNames = ParseList(connectionHandler.LastResponse);
 
@@ -128,22 +145,14 @@ namespace PlayHologramFiles
             if (!string.IsNullOrEmpty(machineName))
             {
                 HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, machineName + ".bin", StringComparison.OrdinalIgnoreCase));
-                if (item != null)
-                {
-                    found = true;
-                    connectionHandler.PlayFile(item.id);
-                }
+                found = PlayFile(connectionHandler, item);
             }
             if (!found)
             {
                 if (!string.IsNullOrEmpty(custom2))
                 {
                     HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, custom2 + ".bin", StringComparison.OrdinalIgnoreCase));
-                    if (item != null)
-                    {
-                        found = true;
-                        connectionHandler.PlayFile(item.id);
-                    }
+                    found = PlayFile(connectionHandler, item);
                 }
             }
             if (!found)
@@ -151,11 +160,7 @@ namespace PlayHologramFiles
                 if (!string.IsNullOrEmpty(manufacturer))
                 {
                     HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, manufacturer + ".bin", StringComparison.OrdinalIgnoreCase));
-                    if (item != null)
-                    {
-                        found = true;
-                        connectionHandler.PlayFile(item.id);
-                    }
+                    found = PlayFile(connectionHandler, item);
                 }
             }
             if (!found)
@@ -163,11 +168,7 @@ namespace PlayHologramFiles
                 if (!string.IsNullOrEmpty(emulator))
                 {
                     HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, emulator + ".bin", StringComparison.OrdinalIgnoreCase));
-                    if (item != null)
-                    {
-                        found = true;
-                        connectionHandler.PlayFile(item.id);
-                    }
+                    found = PlayFile(connectionHandler, item);
                 }
             }
             if (!found)
@@ -175,10 +176,42 @@ namespace PlayHologramFiles
                 if (!string.IsNullOrEmpty(defaultFile))
                 {
                     HologramListItem item = hologramFileNames.FirstOrDefault(r => string.Equals(r.name, defaultFile + ".bin", StringComparison.OrdinalIgnoreCase));
-                    if (item != null)
+                    found = PlayFile(connectionHandler, item);
+                }
+            }
+        }
+
+        private static bool PlayFile(ConnectionHandler connectionHandler, HologramListItem item)
+        {
+            bool rtnVal = false;
+
+            if (item != null)
+            {
+                rtnVal = true;
+                PlayTheFile(connectionHandler, item, 0);
+            }
+
+            return rtnVal;
+        }
+
+        private static void PlayTheFile(ConnectionHandler connectionHandler, HologramListItem item, int retryAttempt)
+        {
+            if (connectionHandler.PlayFile(item.id))
+            {
+                if (retryAttempt < 3)
+                {
+                    //Check to see if it actually took. The stupid hologram often doesn't do anything.
+                    if (connectionHandler.GetList())
                     {
-                        found = true;
-                        connectionHandler.PlayFile(item.id);
+                        List<HologramListItem> hologramFileNames = ParseList(connectionHandler.LastResponse);
+                        //In theory loop until it takes (or 3 tries)
+                        HologramListItem myItem = hologramFileNames.Find(hfn => hfn.runningItem == true);
+                        if (myItem.id != item.id)
+                        {
+                            retryAttempt++;
+                            Console.WriteLine(DateTime.Now + " Retry attempt for " + item.name + " attempt number " + retryAttempt);
+                            PlayTheFile(connectionHandler, item, retryAttempt);
+                        }
                     }
                 }
             }
@@ -199,6 +232,7 @@ namespace PlayHologramFiles
 
         private static List<HologramListItem> ParseList(string lastResponse)
         {
+            //Console.WriteLine(DateTime.Now + " response:::::" + lastResponse + ":::::");
             List<HologramListItem> rtnVal = new List<HologramListItem>();
 
             int idx = 0;
@@ -226,11 +260,14 @@ namespace PlayHologramFiles
                     HologramListItem listItem = new HologramListItem()
                     {
                         id = item.Substring(0, 2),
-                        name = item.Substring(2)
+                        name = item.Substring(2),
+                        runningItem = false
                     };
+                    //Console.WriteLine(DateTime.Now + " " + listItem.id + " " + listItem.name);
                     rtnVal.Add(listItem);
                     idx += fileNameLength;
                 }
+                SetRunningItem(lastResponse, idx, rtnVal);
             }
             catch (Exception ex)
             {
@@ -246,6 +283,21 @@ namespace PlayHologramFiles
             return rtnVal;
         }
 
+        private static void SetRunningItem(string lastResponse, int idx, List<HologramListItem> rtnVal)
+        {
+            try
+            {
+                if (idx + 2 <= lastResponse.Length)
+                {
+                    int itemNumber = GetNumberFromString(lastResponse.Substring(idx, 2));
+                    HologramListItem item = rtnVal[itemNumber - 1];
+                    item.runningItem = true;
+                    //Console.WriteLine(DateTime.Now + " Running item is: " + item.id + " " + item.name);
+                }
+            }
+            catch { }
+        }
+
         private static int GetNumberFromString(string value)
         {
             int rtnVal = 0;
@@ -258,9 +310,4 @@ namespace PlayHologramFiles
 
     }
 
-    class HologramListItem
-    {
-        public string id { get; set; }
-        public string name { get; set; }
-    }
 }
